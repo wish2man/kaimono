@@ -2,7 +2,7 @@
 // 役割は「インストール可能にする」ことと「外枠（このフォルダのファイル）を手元に置いて起動を速くする」こと。
 // 買い物リスト本体（Apps Script 側）の通信には一切手を出さない。
 // ファイルを更新したら VERSION を上げる（古いキャッシュが消えて新しい外枠に入れ替わる）。
-const VERSION = "kaimono-shell-v2";
+const VERSION = "kaimono-shell-v3";
 const SHELL = [
   "./",
   "index.html",
@@ -34,7 +34,8 @@ self.addEventListener("fetch", (e) => {
 
   // ページ本体はネット優先（更新をすぐ反映）、つながらなければキャッシュ
   if (req.mode === "navigate") {
-    e.respondWith(fetch(req).catch(() => caches.match("index.html")));
+    // GitHub Pages は10分キャッシュさせるので、no-cache で毎回サーバーに更新確認する
+    e.respondWith(fetch(req, { cache: "no-cache" }).catch(() => caches.match("index.html")));
     return;
   }
   // アイコン等はキャッシュ優先
