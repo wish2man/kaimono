@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<!-- このページが「いちばん外側のページ」になるので、キーボード対策の
+     interactive-widget=overlays-content はここにも必要（Code.gs の doGet と同じ理由）。 -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=overlays-content">
+<title>かいもの帳</title>
+<meta name="theme-color" content="#FF6B6B">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="かいもの帳">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; background: #FFF9F0; }
+  body { font-family: 'Hiragino Sans', sans-serif; }
+  #app { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: transparent; }
+  #msg {
+    position: fixed; inset: 0; display: flex; flex-direction: column; gap: 16px;
+    align-items: center; justify-content: center; text-align: center; padding: 24px;
+    font-size: 16px; font-weight: 700; color: #FF6B6B;
+  }
+  #msg button {
+    padding: 12px 28px; border-radius: 16px; border: none; font: inherit; font-weight: 900; color: #fff;
+    background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+  }
+  #setup {
+    position: fixed; inset: 0; display: flex; flex-direction: column; gap: 14px;
+    align-items: stretch; justify-content: center; padding: 24px; text-align: center; color: #FF6B6B;
+  }
+  #setup input {
+    width: 100%; padding: 14px; border-radius: 14px; border: 2px solid #FFD3C2; background: #fff;
+    font-size: 15px; font-family: inherit;
+  }
+  #setup input:focus { outline: none; border-color: #FF8E53; }
+  #setup button {
+    padding: 15px; border-radius: 16px; border: none; font: inherit; font-size: 16px; font-weight: 900; color: #fff;
+    background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+  }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<!-- iframe が描画されるまで後ろに見えている「よみこみ中」表示 -->
+<div id="msg"><div id="msg-text">🛒 よみこみ中…</div><button id="retry" hidden>再読み込み</button></div>
+
+<!-- 初回だけ出る設定画面。GAS の URL はこのページ（公開リポジトリ）には書かず、端末の中にだけ保存する -->
+<form id="setup" hidden>
+  <div style="font-size:20px;font-weight:900">🛒 かいもの帳の設定</div>
+  <div style="font-size:13px;color:#888;font-weight:700;line-height:1.6">
+    Apps Script の「デプロイを管理」にある<br>ウェブアプリの URL（…/exec）を貼り付けてください。<br>この端末の中にだけ保存されます。
+  </div>
+  <input id="setup-url" type="url" inputmode="url" autocomplete="off" placeholder="https://script.google.com/macros/s/…/exec" required>
+  <div id="setup-err" style="font-size:13px;color:#E53935" hidden>…/exec で終わる Apps Script の URL を入れてください</div>
+  <button type="submit">保存してひらく</button>
+</form>
+
+<iframe id="app" title="かいもの帳" hidden></iframe>
+
+<script>
+  // GAS ウェブアプリの URL は localStorage に保存する（このファイルは公開されるため直書きしない）。
+  // 設定し直したいときは、アドレスの末尾に #setup を付けて開く。
+  const KEY = "kaimono.gasUrl";
+  const URL_RE = /^https:\/\/script\.google\.com\/(a\/[^/]+\/)?macros\/s\/[\w-]+\/exec$/;
+
+  const frame = document.getElementById("app");
+  const msg = document.getElementById("msg");
+  const msgText = document.getElementById("msg-text");
+  const retry = document.getElementById("retry");
+  const setup = document.getElementById("setup");
+  const setupUrl = document.getElementById("setup-url");
+  const setupErr = document.getElementById("setup-err");
+
+  function getUrl() {
+    try { return localStorage.getItem(KEY) || ""; } catch (e) { return ""; }
+  }
+
+  function show(text, canRetry) {
+    msg.hidden = false;
+    setup.hidden = true;
+    msgText.textContent = text;
+    retry.hidden = !canRetry;
+  }
+
+  function showSetup() {
+    msg.hidden = true;
+    frame.hidden = true;
+    setup.hidden = false;
+    setupUrl.value = getUrl();
+  }
+
+  function load() {
+    const url = getUrl();
+    if (location.hash === "#setup" || !URL_RE.test(url)) { showSetup(); return; }
+    if (!navigator.onLine) {
+      show("📡 オフラインです。電波のある場所で再読み込みしてください", true);
+      return;
+    }
+    show("🛒 よみこみ中…", false);
+    frame.hidden = false;
+    frame.src = url;
+  }
+
+  setup.addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const url = setupUrl.value.trim().replace(/\?.*$/, "");
+    if (!URL_RE.test(url)) { setupErr.hidden = false; return; }
+    try { localStorage.setItem(KEY, url); } catch (e) {}
+    setupErr.hidden = true;
+    history.replaceState(null, "", location.pathname);
+    load();
+  });
+
+  retry.addEventListener("click", () => location.reload());
+  window.addEventListener("online", () => { if (!frame.src) load(); });
+  window.addEventListener("hashchange", load);
+  load();
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+</script>
+</body>
+</html>
