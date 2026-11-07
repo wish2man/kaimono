@@ -92,7 +92,18 @@
     setupUrl.value = getUrl();
   }
 
+  // 設定用リンク（…/kaimono/#url=…/exec）で開かれたら、その URL を保存してアドレスから消す。
+  // # 以降はサーバーに送られないので、GitHub 側には残らない。
+  function takeUrlFromHash() {
+    const m = location.hash.match(/^#url=(.+)$/);
+    if (!m) return;
+    const url = decodeURIComponent(m[1]).trim();
+    if (URL_RE.test(url)) { try { localStorage.setItem(KEY, url); } catch (e) {} }
+    history.replaceState(null, "", location.pathname);
+  }
+
   function load() {
+    takeUrlFromHash();
     const url = getUrl();
     if (location.hash === "#setup" || !URL_RE.test(url)) { showSetup(); return; }
     if (!navigator.onLine) {

@@ -2,7 +2,7 @@
 // 役割は「インストール可能にする」ことと「外枠（このフォルダのファイル）を手元に置いて起動を速くする」こと。
 // 買い物リスト本体（Apps Script 側）の通信には一切手を出さない。
 // ファイルを更新したら VERSION を上げる（古いキャッシュが消えて新しい外枠に入れ替わる）。
-const VERSION = "kaimono-shell-v1";
+const VERSION = "kaimono-shell-v2";
 const SHELL = [
   "./",
   "index.html",
